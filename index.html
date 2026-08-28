@@ -1,0 +1,1467 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>재고이동 레이더</title>
+<script type="application/json" id="embedded-data">{}</script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800;900&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  :root {
+    --bg: #EEF1F2;
+    --surface: #FFFFFF;
+    --surface-2: #F6F8F8;
+    --surface-3: #EBEFEF;
+    --border: #D7DEDF;
+    --border-strong: #C2CBCC;
+    --text: #14191B;
+    --text-muted: #57666A;
+    --text-faint: #8A9598;
+    --accent: #B5541A;
+    --accent-ink: #FFFFFF;
+    --accent-tint: #F7E7DC;
+    --good: #2F7A4F;
+    --good-tint: #E3F0E7;
+    --warning: #9C6B08;
+    --warning-tint: #FBF0D9;
+    --critical: #A73636;
+    --critical-tint: #FAE4E4;
+    --shadow: 0 1px 2px rgba(20, 25, 27, 0.06), 0 6px 20px rgba(20, 25, 27, 0.05);
+    --radius: 10px;
+    --font-display: 'Gothic A1', 'Noto Sans KR', sans-serif;
+    --font-body: 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif;
+    --font-mono: 'IBM Plex Mono', 'IBM Plex Sans KR', monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14181A;
+      --surface: #1B2123;
+      --surface-2: #212829;
+      --surface-3: #262E30;
+      --border: #303A3C;
+      --border-strong: #3C484A;
+      --text: #E9EDEC;
+      --text-muted: #9FADAF;
+      --text-faint: #6D7A7C;
+      --accent: #E38A4C;
+      --accent-ink: #1B1204;
+      --accent-tint: #3A2A1C;
+      --good: #5FB884;
+      --good-tint: #1D2F24;
+      --warning: #E0B34C;
+      --warning-tint: #34290F;
+      --critical: #E38080;
+      --critical-tint: #3A2020;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #14181A;
+    --surface: #1B2123;
+    --surface-2: #212829;
+    --surface-3: #262E30;
+    --border: #303A3C;
+    --border-strong: #3C484A;
+    --text: #E9EDEC;
+    --text-muted: #9FADAF;
+    --text-faint: #6D7A7C;
+    --accent: #E38A4C;
+    --accent-ink: #1B1204;
+    --accent-tint: #3A2A1C;
+    --good: #5FB884;
+    --good-tint: #1D2F24;
+    --warning: #E0B34C;
+    --warning-tint: #34290F;
+    --critical: #E38080;
+    --critical-tint: #3A2020;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body { min-height: 100vh; }
+
+  a { color: var(--accent); }
+
+  ::selection { background: var(--accent-tint); }
+
+  .shell {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    min-height: 100vh;
+    max-width: 1440px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 20px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  @media (max-width: 900px) {
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 2px;
+  }
+
+  .brand .mark {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+
+  .help-btn {
+    margin-left: auto;
+    font-family: var(--font-body);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: none;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    padding: 3px 10px;
+    cursor: pointer;
+  }
+  .help-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(10, 12, 13, 0.5);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    z-index: 50;
+  }
+  .modal-backdrop[hidden] { display: none; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    max-width: 480px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 22px 24px;
+  }
+  .modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .modal-head h3 {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 800;
+    margin: 0;
+  }
+  .modal-close {
+    background: none; border: none; font-size: 22px; line-height: 1;
+    color: var(--text-muted); cursor: pointer; padding: 2px 6px;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-steps {
+    margin: 0; padding-left: 20px;
+    display: flex; flex-direction: column; gap: 12px;
+    font-size: 13px; line-height: 1.6;
+  }
+  .modal-steps strong { font-weight: 700; }
+
+  .brand h1 {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 19px;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .brand-sub {
+    color: var(--text-muted);
+    font-size: 12.5px;
+    margin: 0;
+  }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 0 0 10px;
+  }
+
+  /* file slots */
+  .file-grid {
+    display: grid;
+    gap: 8px;
+  }
+
+  .file-slot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+
+  .file-slot.filled { border-color: var(--good); background: var(--good-tint); }
+  .file-slot.pending { border-style: dashed; }
+
+  .file-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--border-strong);
+    flex: none;
+  }
+  .file-slot.filled .file-dot { background: var(--good); }
+
+  .file-meta { flex: 1; min-width: 0; }
+  .file-name { font-size: 12.5px; font-weight: 600; }
+  .file-status { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .dropzone {
+    border: 1.5px dashed var(--border-strong);
+    border-radius: var(--radius);
+    padding: 16px 12px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: var(--accent-tint); color: var(--text); }
+  .dropzone input { display: none; }
+  .dropzone strong { color: var(--text); }
+
+  .filters {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .field label .val { font-family: var(--font-mono); color: var(--accent); font-weight: 600; }
+
+  select, input[type="text"], input[type="number"] {
+    font-family: var(--font-body);
+    font-size: 13px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    width: 100%;
+  }
+  select:focus, input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+  }
+
+  .chipset { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-2);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    color: var(--text-muted);
+  }
+  .chip input { display: none; }
+  .chip.on {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+  }
+
+  .hint {
+    font-size: 11.5px;
+    color: var(--text-faint);
+    line-height: 1.5;
+  }
+
+  .reset-btn {
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: none;
+    border: 1px solid var(--border-strong);
+    border-radius: 7px;
+    padding: 7px 10px;
+    cursor: pointer;
+    align-self: flex-start;
+  }
+  .reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- Main ---------- */
+  .main {
+    padding: 24px 28px 60px;
+    min-width: 0;
+  }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .topbar h2 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 800;
+    margin: 0 0 4px;
+    text-wrap: balance;
+  }
+  .topbar p { margin: 0; color: var(--text-muted); font-size: 13px; }
+
+  .searchbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 8px 12px;
+    min-width: 240px;
+  }
+  .searchbox input {
+    border: none; padding: 0; font-size: 13px; background: transparent;
+  }
+  .searchbox input:focus { outline: none; }
+  .searchbox svg { flex: none; color: var(--text-faint); }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  @media (max-width: 720px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
+
+  .stat-tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+  .stat-tile .n {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 26px;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+  .stat-tile .l {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .stat-tile.critical .n { color: var(--critical); }
+  .stat-tile.warning .n { color: var(--warning); }
+  .stat-tile.accent .n { color: var(--accent); }
+
+  .empty-state {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 56px 32px;
+    text-align: center;
+    color: var(--text-muted);
+    box-shadow: var(--shadow);
+  }
+  .empty-state h3 {
+    font-family: var(--font-display);
+    font-size: 18px;
+    color: var(--text);
+    margin: 14px 0 8px;
+  }
+  .empty-state ol {
+    text-align: left;
+    max-width: 420px;
+    margin: 18px auto 0;
+    padding-left: 20px;
+    font-size: 13px;
+    line-height: 1.9;
+  }
+  .empty-state ol code {
+    font-family: var(--font-mono);
+    background: var(--surface-3);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .table-scroll { overflow: auto; max-height: 68vh; }
+
+  table { border-collapse: collapse; width: 100%; min-width: 920px; }
+
+  thead th {
+    position: sticky; top: 0;
+    background: var(--surface-2);
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  thead th.num, td.num { text-align: right; }
+  thead th .arrow { opacity: 0.35; margin-left: 3px; }
+  thead th.sorted .arrow { opacity: 1; color: var(--accent); }
+
+  tbody td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12.5px;
+    vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface-2); }
+
+  td.num, td.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  .cell-product { max-width: 260px; }
+  .cell-product .pname { font-weight: 600; }
+  .cell-product .pstyle { color: var(--text-faint); font-family: var(--font-mono); font-size: 11px; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px 3px 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+  .pill.critical { background: var(--critical-tint); color: var(--critical); }
+  .pill.critical::before { background: var(--critical); }
+  .pill.warning { background: var(--warning-tint); color: var(--warning); }
+  .pill.warning::before { background: var(--warning); }
+
+  .brand-tag {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+  }
+
+  .ratio-bar {
+    display: inline-block;
+    width: 46px; height: 6px;
+    border-radius: 3px;
+    background: var(--surface-3);
+    position: relative;
+    overflow: hidden;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  .ratio-bar span { position: absolute; inset: 0; background: var(--warning); }
+  .ratio-bar.zero span { background: var(--critical); width: 100% !important; }
+
+  .foot-note {
+    padding: 10px 14px;
+    font-size: 11.5px;
+    color: var(--text-faint);
+    border-top: 1px solid var(--border);
+  }
+
+  .no-results {
+    padding: 48px 20px;
+    text-align: center;
+    color: var(--text-muted);
+  }
+
+  .badge-req {
+    font-size: 11px;
+    background: var(--critical-tint);
+    color: var(--critical);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .top-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  button.export-btn {
+    font-family: var(--font-body);
+    font-size: 12.5px;
+    font-weight: 600;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 14px;
+    cursor: pointer;
+  }
+  button.export-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  button.publish-btn {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+  }
+  button.publish-btn:hover { filter: brightness(1.06); border-color: var(--accent); color: var(--accent-ink); }
+  button.publish-btn:disabled { opacity: 0.6; cursor: default; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="mark">RADAR</span>
+      <button type="button" class="help-btn" id="helpBtn">? 사용법</button>
+    </div>
+    <div>
+      <h1>재고이동 레이더</h1>
+      <p class="brand-sub">우리 매장은 잘 나가는데, 다른 매장엔 잠자고 있는 재고 찾기</p>
+      <p class="hint" id="publishedNote" style="display:none;margin-top:6px;"></p>
+    </div>
+
+    <div>
+      <p class="section-label">1&nbsp;· 데이터 업로드</p>
+      <div class="file-grid" id="fileGrid"></div>
+      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="엑셀 파일 업로드">
+        <input type="file" id="fileInput" multiple accept=".xlsx,.xls" />
+        <div><strong>클릭하거나 파일을 끌어다 놓으세요</strong></div>
+        <div style="margin-top:4px;">가격표 · 점별판매현황 · 점별재고 (필수) + 창고재고 · 매출분석표 (선택, 순서 무관)</div>
+      </div>
+    </div>
+
+    <div class="filters" id="filterPanel" style="display:none;">
+      <div>
+        <p class="section-label">2&nbsp;· 기준 매장</p>
+        <div class="field">
+          <label for="storeSelect">내 매장 선택 <span class="badge-req">필수</span></label>
+          <select id="storeSelect"></select>
+        </div>
+      </div>
+
+      <div>
+        <p class="section-label">3&nbsp;· 브랜드</p>
+        <div class="chipset" id="brandChips"></div>
+        <p class="hint">아무것도 선택하지 않으면 전체 브랜드가 표시됩니다. 특정 브랜드만 보려면 눌러서 선택하세요.</p>
+      </div>
+
+      <div id="categorySection" style="display:none;">
+        <p class="section-label">4&nbsp;· 카테고리</p>
+        <div class="field">
+          <label for="majorSelect">대분류</label>
+          <select id="majorSelect"><option value="">전체</option></select>
+        </div>
+        <div class="field">
+          <label for="midSelect">중분류</label>
+          <select id="midSelect"><option value="">전체</option></select>
+        </div>
+        <p class="hint">매출분석표.xlsx에서 읽은 분류입니다. 전체를 두면 모든 카테고리가 표시됩니다.</p>
+      </div>
+
+      <div>
+        <p class="section-label">5&nbsp;· 특이값 판정 기준</p>
+        <div class="field">
+          <label for="topN">우리 매장 판매 상위 <span class="val" id="topNVal">10</span>개</label>
+          <input type="range" id="topN" min="3" max="60" value="10" step="1" />
+        </div>
+        <div class="field">
+          <label for="ratio">타 매장 판매부족 기준 <span class="val" id="ratioVal">20%</span></label>
+          <input type="range" id="ratio" min="0" max="80" value="20" step="5" />
+          <p class="hint">우리 매장 판매량 대비 이 비율 이하면 "판매부족", 0이면 "판매없음"으로 표시</p>
+        </div>
+        <div class="field">
+          <label for="minStock">비교 대상 최소 재고 <span class="val" id="minStockVal">1족</span></label>
+          <input type="range" id="minStock" min="1" max="20" value="1" step="1" />
+        </div>
+        <div class="field">
+          <label for="deprMax">감가율 상한 <span class="val" id="deprMaxVal">70%</span></label>
+          <input type="range" id="deprMax" min="0" max="100" value="70" step="5" />
+        </div>
+      </div>
+
+      <button class="reset-btn" id="resetBtn">기본값으로 초기화</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <h2 id="mainTitle">매장을 선택하면 시작됩니다</h2>
+        <p id="mainSub">왼쪽에서 4개 파일을 올리고 매장을 선택하세요.</p>
+      </div>
+      <div class="top-controls" id="topControls" style="display:none;">
+        <div class="searchbox">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="searchInput" placeholder="상품명·스타일 검색" />
+        </div>
+        <button class="export-btn" id="exportBtn" style="display:none;">CSV로 내보내기</button>
+        <button class="export-btn publish-btn" id="publishBtn" style="display:none;">이 데이터로 게시하기</button>
+        <span class="hint" id="exportStatus" style="align-self:center;"></span>
+      </div>
+    </div>
+    <p class="hint" id="publishStatus" style="margin:-10px 0 12px;"></p>
+
+    <div class="stat-row" id="statRow" style="display:none;"></div>
+
+    <div id="content">
+      <div class="empty-state" id="emptyState">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-faint)"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <h3>파일을 올리면 바로 분석합니다</h3>
+        <p>매주 쓰시던 파일을 그대로 올리면 됩니다. 서버로 전송되지 않고 이 브라우저 안에서만 계산돼요.</p>
+        <ol>
+          <li><code>가격표.xlsx</code> — 감가율·판매가 (필수)</li>
+          <li><code>점별판매현황.xlsx</code> — 지점별 판매 수량 (필수)</li>
+          <li><code>점별재고.xlsx</code> — 지점별 현재 재고 (필수)</li>
+          <li><code>창고재고.xlsx</code> — 중앙 창고 재고 (선택, 참고용)</li>
+          <li><code>매출분석표.xlsx</code> — 입고년월 (선택, 최근 입고분 자동 제외용)</li>
+        </ol>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="helpBackdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="modal-head">
+      <h3 id="helpTitle">사용법</h3>
+      <button type="button" class="modal-close" id="helpClose" aria-label="닫기">&times;</button>
+    </div>
+    <ol class="modal-steps">
+      <li><strong>내 매장을 선택하세요.</strong> 왼쪽 "내 매장 선택"에서 본인 매장을 고르면 바로 분석 결과가 나옵니다.</li>
+      <li><strong>표를 확인하세요.</strong> <span class="pill critical" style="pointer-events:none;">판매없음</span>은 다른 지점에 재고는 있는데 전혀 안 팔린 상품 — 가장 먼저 요청해볼 이관 후보입니다. <span class="pill warning" style="pointer-events:none;">판매부족</span>은 다른 지점보다 우리 매장이 훨씬 잘 팔리는 상품이니 검토해볼 만합니다.</li>
+      <li><strong>대상 지점에 연락하세요.</strong> "대상 지점" 칸이 재고를 갖고 있는 곳입니다. 그 지점 담당자에게 재고이동을 요청하시면 됩니다.</li>
+      <li><strong>필요하면 조건을 조정하세요.</strong> 왼쪽에서 브랜드, 카테고리(대분류/중분류, 매출분석표 업로드 시), 판매 상위 개수, 감가율 상한 등을 바꿔볼 수 있습니다. 안 건드리셔도 기본값으로 바로 쓸 수 있어요.</li>
+      <li><strong>검색·저장.</strong> 오른쪽 위 검색창으로 상품명을 찾거나, "CSV로 내보내기"로 결과를 파일로 저장할 수 있습니다.</li>
+    </ol>
+    <p class="hint" style="margin-top:14px;">궁금한 점이 있으면 지역장(사용자님)에게 문의해주세요.</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const ROLES = {
+    price:         { label: '가격표',       required: ['스타일','컬러','감가율','판매가','브랜드','상품'], optional: false },
+    sales:         { label: '점별판매현황', required: ['점','스타일','컬러','수량(합계)'], optional: false },
+    stock:         { label: '점별재고',     required: ['점','스타일','컬러','현재재고'], optional: false },
+    wh:            { label: '창고재고',     required: ['창고','스타일','컬러','현재재고'], optional: true },
+    salesAnalysis: { label: '매출분석표(입고년월)', required: ['년도','월','스타일','컬러'], optional: true, sheetName: '신발' },
+  };
+
+  const state = {
+    files: {},        // role -> {name, colmap, rows}
+    priceMap: null,
+    salesByStoreSku: null,
+    storeStockTotal: null,
+    storeSizeMap: null,
+    whSum: null,
+    stockInMap: null,  // 스타일|컬러 -> {yr, mo} from 매출분석표
+    categoryMap: null, // 스타일|컬러 -> {major, mid} from 매출분석표 (대분류/중분류)
+    stores: [],
+    brands: [],
+    activeBrands: new Set(),
+    majors: [],
+    midsByMajor: {},   // major -> sorted mid[]
+    activeMajor: '',
+    activeMid: '',
+    sortKey: 'severity',
+    sortDir: 'desc',
+  };
+
+  const DEFAULTS = { topN: 10, ratio: 20, minStock: 1, deprMax: 70 };
+  // content.innerHTML gets overwritten once results render, so snapshot the
+  // empty-state markup now — re-showing it later can't rely on the live DOM node.
+  const EMPTY_STATE_HTML = document.getElementById('emptyState').outerHTML;
+
+  // ---------- helpers ----------
+  function norm(v) {
+    if (v === null || v === undefined) return '';
+    if (typeof v === 'number' && Number.isInteger(v)) return String(v);
+    return String(v).trim();
+  }
+  function num(v) {
+    if (v === null || v === undefined) return 0;
+    if (typeof v === 'number') return v;
+    const s = String(v).replace(/,/g, '').trim();
+    if (s === '') return 0;
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  }
+  function realRange(sheet) {
+    let maxR = 0, maxC = 0, any = false;
+    for (const key in sheet) {
+      if (key.charCodeAt(0) === 33) continue; // '!'
+      const addr = XLSX.utils.decode_cell(key);
+      any = true;
+      if (addr.r > maxR) maxR = addr.r;
+      if (addr.c > maxC) maxC = addr.c;
+    }
+    if (!any) return null;
+    return { s: { r: 0, c: 0 }, e: { r: maxR, c: maxC } };
+  }
+  function findHeaderRow(sheet, range) {
+    // Two known header shapes in these exported reports:
+    //  (a) "NO"/"No" in one of the first few columns (가격표/점별판매현황/점별재고/창고재고)
+    //  (b) a row containing 년도+월+스타일+컬러 as column names (매출분석표, no NO column)
+    for (let r = range.s.r; r <= Math.min(range.e.r, 60); r++) {
+      const rowVals = new Set();
+      let hasNo = false;
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const cell = sheet[XLSX.utils.encode_cell({ r, c })];
+        if (!cell || cell.v === null || cell.v === undefined) continue;
+        const v = String(cell.v).trim();
+        if (c <= range.s.c + 3 && ['NO', 'No', 'no'].includes(v)) hasNo = true;
+        rowVals.add(v);
+      }
+      if (hasNo) return r;
+      if (rowVals.has('년도') && rowVals.has('월') && rowVals.has('스타일') && rowVals.has('컬러')) return r;
+    }
+    return -1;
+  }
+  function sheetToTable(sheet) {
+    const range = realRange(sheet);
+    if (!range) return null;
+    const headerRow = findHeaderRow(sheet, range);
+    if (headerRow < 0) return null;
+    const header = [];
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const cell = sheet[XLSX.utils.encode_cell({ r: headerRow, c })];
+      header.push(cell ? String(cell.v).trim() : null);
+    }
+    const colmap = {};
+    header.forEach((name, idx) => { if (name && !(name in colmap)) colmap[name] = idx; });
+    const rows = [];
+    for (let r = headerRow + 1; r <= range.e.r; r++) {
+      const firstCell = sheet[XLSX.utils.encode_cell({ r, c: 0 })];
+      if (!firstCell || firstCell.v === null || firstCell.v === undefined || firstCell.v === '') continue;
+      const row = new Array(range.e.c - range.s.c + 1);
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const cell = sheet[XLSX.utils.encode_cell({ r, c })];
+        row[c - range.s.c] = cell ? cell.v : null;
+      }
+      rows.push(row);
+    }
+    return { colmap, rows };
+  }
+  function classify(table) {
+    const cols = new Set(Object.keys(table.colmap));
+    for (const role in ROLES) {
+      if (ROLES[role].required.every(k => cols.has(k))) {
+        // disambiguate stock vs wh: wh has '창고' col, stock has '점' col but not '창고'
+        if (role === 'stock' && cols.has('창고')) continue;
+        return role;
+      }
+    }
+    return null;
+  }
+
+  // ---------- file handling ----------
+  const fileGrid = document.getElementById('fileGrid');
+  function renderFileGrid() {
+    fileGrid.innerHTML = '';
+    Object.keys(ROLES).forEach(role => {
+      const f = state.files[role];
+      const div = document.createElement('div');
+      div.className = 'file-slot ' + (f ? 'filled' : 'pending');
+      const label = ROLES[role].label + (ROLES[role].optional ? ' <span style="color:var(--text-faint);font-weight:500;">(선택)</span>' : '');
+      div.innerHTML = '<span class="file-dot"></span>' +
+        '<div class="file-meta">' +
+          '<div class="file-name">' + label + '</div>' +
+          '<div class="file-status">' + (f ? (f.name + ' · ' + f.rows.length.toLocaleString() + '행') : '대기 중') + '</div>' +
+        '</div>';
+      fileGrid.appendChild(div);
+    });
+  }
+  renderFileGrid();
+
+  // ---------- load previously-published data, if any ----------
+  function tryLoadEmbedded() {
+    const el = document.getElementById('embedded-data');
+    if (!el) return;
+    let payload;
+    try { payload = JSON.parse(el.textContent); } catch (e) { return; }
+    if (!payload) return;
+    try {
+      const maps = {
+        priceMap: new Map(payload.priceMap || []),
+        salesByStoreSku: new Map(payload.salesByStoreSku || []),
+        storeStockTotal: new Map(payload.storeStockTotal || []),
+        whSum: payload.whSum ? new Map(payload.whSum) : null,
+        stockInMap: payload.stockInMap ? new Map(payload.stockInMap) : null,
+        categoryMap: payload.categoryMap ? new Map(payload.categoryMap) : null,
+      };
+      const counts = payload.fileCounts || {};
+      Object.keys(ROLES).forEach(role => {
+        if (counts[role] != null) {
+          state.files[role] = { name: '게시된 데이터', rows: { length: counts[role] } };
+        }
+      });
+      renderFileGrid();
+      finalizeModel(maps);
+      if (payload.publishedAt) {
+        const d = new Date(payload.publishedAt);
+        const stamp = isNaN(d.getTime())
+          ? payload.publishedAt
+          : d.toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+        const note = document.getElementById('publishedNote');
+        note.textContent = '마지막 게시: ' + stamp + ' — 새 파일을 올리면 최신 데이터로 갱신됩니다.';
+        note.style.display = '';
+      }
+    } catch (err) {
+      console.error('embedded data load failed', err);
+    }
+  }
+  function handleFiles(fileList) {
+    const arr = Array.from(fileList);
+    let pending = arr.length;
+    if (!pending) return;
+    arr.forEach(f => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+          // 매출분석표 workbooks ship multiple category sheets (신발/키즈/자사/용품/의류);
+          // we only care about 신발(shoes). Every other file here is single-sheet, so this is safe.
+          const sheetName = wb.SheetNames.includes('신발') ? '신발' : wb.SheetNames[0];
+          const sheet = wb.Sheets[sheetName];
+          const table = sheetToTable(sheet);
+          if (table) {
+            const role = classify(table);
+            if (role) {
+              state.files[role] = { name: f.name, colmap: table.colmap, rows: table.rows };
+            }
+          }
+        } catch (err) {
+          console.error('parse error', f.name, err);
+        } finally {
+          pending--;
+          renderFileGrid();
+          if (pending === 0) maybeBuild();
+        }
+      };
+      reader.readAsArrayBuffer(f);
+    });
+  }
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+  fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+  ['dragenter', 'dragover'].forEach(ev => dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.add('drag'); }));
+  ['dragleave', 'drop'].forEach(ev => dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.remove('drag'); }));
+  dropzone.addEventListener('drop', (e) => { if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+
+  // ---------- build data model ----------
+  function maybeBuild() {
+    if (!state.files.price || !state.files.sales || !state.files.stock) return;
+    buildModel();
+  }
+
+  function buildModel() {
+    const price = state.files.price, sales = state.files.sales, stock = state.files.stock, wh = state.files.wh, sa = state.files.salesAnalysis;
+
+    const priceMap = new Map();
+    for (const row of price.rows) {
+      const st = norm(row[price.colmap['스타일']]);
+      const co = norm(row[price.colmap['컬러']]);
+      if (!st) continue;
+      const key = st + '|' + co;
+      if (!priceMap.has(key)) {
+        priceMap.set(key, {
+          brand: norm(row[price.colmap['브랜드']]),
+          name: norm(row[price.colmap['상품']]),
+          style: st, color: co,
+          price: num(row[price.colmap['판매가']]),
+          depr: num(row[price.colmap['감가율']]),
+        });
+      }
+    }
+
+    const salesByStoreSku = new Map();
+    for (const row of sales.rows) {
+      const s = norm(row[sales.colmap['점']]);
+      const st = norm(row[sales.colmap['스타일']]);
+      const co = norm(row[sales.colmap['컬러']]);
+      if (!s || !st) continue;
+      const q = num(row[sales.colmap['수량(합계)']]);
+      const key = s + '|' + st + '|' + co;
+      salesByStoreSku.set(key, (salesByStoreSku.get(key) || 0) + q);
+    }
+
+    const storeStockTotal = new Map();
+    for (const row of stock.rows) {
+      const s = norm(row[stock.colmap['점']]);
+      const st = norm(row[stock.colmap['스타일']]);
+      const co = norm(row[stock.colmap['컬러']]);
+      if (!s || !st) continue;
+      const q = num(row[stock.colmap['현재재고']]);
+      const key = s + '|' + st + '|' + co;
+      storeStockTotal.set(key, (storeStockTotal.get(key) || 0) + q);
+    }
+
+    let whSum = null;
+    if (wh) {
+      whSum = new Map();
+      for (const row of wh.rows) {
+        const st = norm(row[wh.colmap['스타일']]);
+        const co = norm(row[wh.colmap['컬러']]);
+        if (!st) continue;
+        const q = num(row[wh.colmap['현재재고']]);
+        const key = st + '|' + co;
+        whSum.set(key, (whSum.get(key) || 0) + q);
+      }
+    }
+
+    let stockInMap = null;
+    let categoryMap = null;
+    if (sa) {
+      stockInMap = new Map();
+      const hasCategory = sa.colmap['대분류'] !== undefined && sa.colmap['중분류'] !== undefined;
+      if (hasCategory) categoryMap = new Map();
+      for (const row of sa.rows) {
+        const st = norm(row[sa.colmap['스타일']]);
+        const co = norm(row[sa.colmap['컬러']]);
+        if (!st) continue;
+        const key = st + '|' + co;
+        if (stockInMap.has(key)) continue; // first occurrence wins
+        stockInMap.set(key, {
+          yr: norm(row[sa.colmap['년도']]),
+          mo: norm(row[sa.colmap['월']]).padStart(2, '0'),
+        });
+        if (hasCategory) {
+          categoryMap.set(key, {
+            major: norm(row[sa.colmap['대분류']]),
+            mid: norm(row[sa.colmap['중분류']]),
+          });
+        }
+      }
+    }
+
+    finalizeModel({ priceMap, salesByStoreSku, storeStockTotal, whSum, stockInMap, categoryMap });
+  }
+
+  // Shared by a fresh file-based build AND a load from previously-published
+  // embedded data — everything after the four/five maps exist is identical.
+  function finalizeModel(maps) {
+    state.priceMap = maps.priceMap;
+    state.salesByStoreSku = maps.salesByStoreSku;
+    state.storeStockTotal = maps.storeStockTotal;
+    state.whSum = maps.whSum;
+    state.stockInMap = maps.stockInMap;
+    state.categoryMap = maps.categoryMap || null;
+
+    const storeSet = new Set();
+    for (const key of state.salesByStoreSku.keys()) storeSet.add(key.split('|')[0]);
+    for (const key of state.storeStockTotal.keys()) storeSet.add(key.split('|')[0]);
+    state.stores = Array.from(storeSet).sort((a, b) => a.localeCompare(b, 'ko'));
+    state.brands = Array.from(new Set(Array.from(state.priceMap.values()).map(p => p.brand))).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    if (!state.activeBrands) state.activeBrands = new Set();
+
+    state.majors = [];
+    state.midsByMajor = {};
+    if (state.categoryMap) {
+      const majorSet = new Set();
+      const midSets = {};
+      for (const cat of state.categoryMap.values()) {
+        if (cat.major) majorSet.add(cat.major);
+        if (cat.major && cat.mid) (midSets[cat.major] = midSets[cat.major] || new Set()).add(cat.mid);
+      }
+      state.majors = Array.from(majorSet).sort((a, b) => a.localeCompare(b, 'ko'));
+      Object.keys(midSets).forEach(m => { state.midsByMajor[m] = Array.from(midSets[m]).sort((a, b) => a.localeCompare(b)); });
+    }
+
+    const prevSelectedStore = document.getElementById('storeSelect').value;
+    populateStoreSelect();
+    // adding/replacing a file (e.g. 매출분석표 dropped in after the fact), or loading
+    // previously-published data, shouldn't force re-picking a store still in the list
+    if (prevSelectedStore && state.stores.includes(prevSelectedStore)) {
+      document.getElementById('storeSelect').value = prevSelectedStore;
+    }
+    populateBrandChips();
+    populateCategorySelects();
+    document.getElementById('filterPanel').style.display = 'flex';
+    document.getElementById('filterPanel').style.flexDirection = 'column';
+    document.getElementById('topControls').style.display = 'flex';
+    recompute();
+    updatePublishBtnVisibility();
+  }
+
+  function populateStoreSelect() {
+    const sel = document.getElementById('storeSelect');
+    sel.innerHTML = '<option value="">선택하세요</option>' +
+      state.stores.map(s => '<option value="' + s + '">' + s + '</option>').join('');
+  }
+
+  function populateBrandChips() {
+    const wrap = document.getElementById('brandChips');
+    wrap.innerHTML = state.brands.map(b => {
+      const on = state.activeBrands.has(b);
+      return '<label class="chip' + (on ? ' on' : '') + '" data-brand="' + b + '">' +
+        '<input type="checkbox"' + (on ? ' checked' : '') + ' />' + b +
+      '</label>';
+    }).join('');
+    wrap.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', (e) => {
+        e.preventDefault();
+        const b = chip.getAttribute('data-brand');
+        const cb = chip.querySelector('input');
+        if (state.activeBrands.has(b)) { state.activeBrands.delete(b); chip.classList.remove('on'); cb.checked = false; }
+        else { state.activeBrands.add(b); chip.classList.add('on'); cb.checked = true; }
+        recompute();
+      });
+    });
+  }
+
+  function populateCategorySelects() {
+    const section = document.getElementById('categorySection');
+    const majorSel = document.getElementById('majorSelect');
+    if (!state.categoryMap || !state.majors.length) {
+      section.style.display = 'none';
+      state.activeMajor = '';
+      state.activeMid = '';
+      return;
+    }
+    section.style.display = '';
+    const prevMajor = state.activeMajor;
+    majorSel.innerHTML = '<option value="">전체</option>' +
+      state.majors.map(m => '<option value="' + esc(m) + '">' + esc(m) + '</option>').join('');
+    majorSel.value = state.majors.includes(prevMajor) ? prevMajor : '';
+    state.activeMajor = majorSel.value;
+    populateMidSelect();
+  }
+
+  function populateMidSelect() {
+    const midSel = document.getElementById('midSelect');
+    const mids = state.activeMajor
+      ? (state.midsByMajor[state.activeMajor] || [])
+      : Array.from(new Set(Object.values(state.midsByMajor).flat())).sort((a, b) => a.localeCompare(b));
+    const prevMid = state.activeMid;
+    midSel.innerHTML = '<option value="">전체</option>' +
+      mids.map(m => '<option value="' + esc(m) + '">' + esc(m) + '</option>').join('');
+    midSel.value = mids.includes(prevMid) ? prevMid : '';
+    state.activeMid = midSel.value;
+  }
+
+  // ---------- filter wiring ----------
+  const $topN = document.getElementById('topN');
+  const $ratio = document.getElementById('ratio');
+  const $minStock = document.getElementById('minStock');
+  const $deprMax = document.getElementById('deprMax');
+  const $storeSelect = document.getElementById('storeSelect');
+  const $search = document.getElementById('searchInput');
+  const $majorSelect = document.getElementById('majorSelect');
+  const $midSelect = document.getElementById('midSelect');
+
+  function syncLabels() {
+    document.getElementById('topNVal').textContent = $topN.value;
+    document.getElementById('ratioVal').textContent = $ratio.value + '%';
+    document.getElementById('minStockVal').textContent = $minStock.value + '족';
+    document.getElementById('deprMaxVal').textContent = $deprMax.value + '%';
+  }
+  [$topN, $ratio, $minStock, $deprMax].forEach(el => el.addEventListener('input', () => { syncLabels(); recompute(); }));
+  $storeSelect.addEventListener('change', recompute);
+  $search.addEventListener('input', renderTable);
+  $majorSelect.addEventListener('change', () => {
+    state.activeMajor = $majorSelect.value;
+    populateMidSelect();
+    recompute();
+  });
+  $midSelect.addEventListener('change', () => {
+    state.activeMid = $midSelect.value;
+    recompute();
+  });
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    $topN.value = DEFAULTS.topN; $ratio.value = DEFAULTS.ratio; $minStock.value = DEFAULTS.minStock; $deprMax.value = DEFAULTS.deprMax;
+    state.activeBrands = new Set();
+    populateBrandChips();
+    state.activeMajor = ''; state.activeMid = '';
+    populateCategorySelects();
+    syncLabels();
+    recompute();
+  });
+  syncLabels();
+
+  document.querySelectorAll('thead').forEach(() => {}); // no-op placeholder
+
+  // ---------- core computation ----------
+  let currentRows = [];
+
+  function referenceYms() {
+    // "이번달"과 "직전월" — 매출분석표 기준 최근 입고분 제외에 쓰는 두 기준월.
+    // 이 브라우저의 현재 날짜를 기준으로 계산합니다.
+    const now = new Date();
+    const curYr = String(now.getFullYear()).slice(-2);
+    const curMo = String(now.getMonth() + 1).padStart(2, '0');
+    let prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevYr = String(prevMonthDate.getFullYear()).slice(-2);
+    const prevMo = String(prevMonthDate.getMonth() + 1).padStart(2, '0');
+    return {
+      current: curYr + '-' + curMo,
+      prev: prevYr + '-' + prevMo,
+      excluded: new Set([curYr + '-' + curMo, prevYr + '-' + prevMo]),
+    };
+  }
+
+  function recompute() {
+    const store = $storeSelect.value;
+    const topN = parseInt($topN.value, 10);
+    const ratioMax = parseInt($ratio.value, 10) / 100;
+    const minStock = parseInt($minStock.value, 10);
+    const deprMax = parseInt($deprMax.value, 10);
+    const yms = referenceYms();
+
+    if (!store) {
+      currentRows = [];
+      document.getElementById('mainTitle').textContent = '매장을 선택하면 시작됩니다';
+      document.getElementById('mainSub').textContent = '왼쪽 사이드바에서 내 매장을 골라주세요.';
+      document.getElementById('statRow').style.display = 'none';
+      renderTable();
+      return;
+    }
+
+    const sSales = [];
+    for (const [key, qty] of state.salesByStoreSku.entries()) {
+      const parts = key.split('|');
+      const s = parts[0], st = parts[1], co = parts.slice(2).join('|');
+      if (s === store && qty > 0) {
+        const p = state.priceMap.get(st + '|' + co);
+        if (!p) continue;
+        if (state.activeBrands.size > 0 && !state.activeBrands.has(p.brand)) continue;
+        if (state.activeMajor || state.activeMid) {
+          const cat = state.categoryMap ? state.categoryMap.get(st + '|' + co) : null;
+          if (state.activeMajor && (!cat || cat.major !== state.activeMajor)) continue;
+          if (state.activeMid && (!cat || cat.mid !== state.activeMid)) continue;
+        }
+        sSales.push({ style: st, color: co, qty, info: p });
+      }
+    }
+    sSales.sort((a, b) => b.qty - a.qty);
+    // "판매 상위 N개"는 순수 판매수량 순위로 먼저 뽑고(브랜드 범위만 먼저 좁힘),
+    // 감가율 상한·최근입고 제외는 그렇게 뽑힌 상위 N개에 대해 별도 조건(교집합)으로 나중에 적용합니다.
+    // 먼저 걸러버리면 "상위 N개" 자체가 감가율 상한값에 따라 계속 달라져서 슬라이더를 움직여도
+    // 결과가 예상대로 늘어나지 않는 것처럼 보이는 문제가 있었습니다.
+    const top = sSales.slice(0, topN).filter(sku => {
+      if (sku.info.depr > deprMax) return false;
+      if (state.stockInMap) {
+        const inInfo = state.stockInMap.get(sku.style + '|' + sku.color);
+        if (inInfo && yms.excluded.has(inInfo.yr + '-' + inInfo.mo)) return false; // 직전월+이번달 입고분 제외
+      }
+      return true;
+    });
+
+    const rows = [];
+    for (const sku of top) {
+      const skuKey = sku.style + '|' + sku.color;
+      for (const other of state.stores) {
+        if (other === store) continue;
+        const oStock = state.storeStockTotal.get(other + '|' + skuKey) || 0;
+        if (oStock < minStock) continue;
+        const oSales = state.salesByStoreSku.get(other + '|' + skuKey) || 0;
+        const ratio = sku.qty > 0 ? oSales / sku.qty : 0;
+        let status = null;
+        if (oSales === 0) status = 'critical';
+        else if (ratio <= ratioMax) status = 'warning';
+        if (!status) continue;
+        rows.push({
+          brand: sku.info.brand, name: sku.info.name, style: sku.style, color: sku.color,
+          depr: sku.info.depr, price: sku.info.price,
+          store: other, oStock, oSales, sSales: sku.qty, ratio,
+          whStock: state.whSum ? (state.whSum.get(skuKey) || 0) : null,
+          status,
+        });
+      }
+    }
+    currentRows = rows;
+
+    document.getElementById('mainTitle').textContent = store;
+    let subText = '판매 상위 ' + topN + '개 SKU 기준 · 감가율 ' + deprMax + '% 이하 · 타 매장 판매부족 ' + $ratio.value + '% 기준';
+    if (state.stockInMap) {
+      subText += ' · 입고 ' + yms.prev + '·' + yms.current + ' 제외';
+    }
+    document.getElementById('mainSub').textContent = subText;
+
+    renderStats(top.length, rows);
+    renderTable();
+  }
+
+  function renderStats(skuCount, rows) {
+    const critical = rows.filter(r => r.status === 'critical').length;
+    const warning = rows.filter(r => r.status === 'warning').length;
+    const storesInvolved = new Set(rows.map(r => r.store)).size;
+    const el = document.getElementById('statRow');
+    el.style.display = 'grid';
+    el.innerHTML =
+      tile(skuCount, '분석 대상 SKU', 'accent') +
+      tile(critical, '판매없음 (즉시 이관 후보)', 'critical') +
+      tile(warning, '판매부족 (검토 필요)', 'warning') +
+      tile(storesInvolved, '관련 지점 수', '');
+  }
+  function tile(n, label, cls) {
+    return '<div class="stat-tile ' + cls + '"><div class="n">' + n.toLocaleString() + '</div><div class="l">' + label + '</div></div>';
+  }
+
+  // ---------- table rendering ----------
+  const SORTERS = {
+    severity: (r) => r.status === 'critical' ? 0 : 1,
+    sSales: (r) => -r.sSales,
+    oStock: (r) => -r.oStock,
+    brand: (r) => r.brand,
+  };
+
+  function renderTable() {
+    const content = document.getElementById('content');
+    if (!$storeSelect.value) {
+      content.innerHTML = EMPTY_STATE_HTML;
+      return;
+    }
+    const q = $search.value.trim().toLowerCase();
+    let rows = currentRows.filter(r => !q || (r.name + ' ' + r.style).toLowerCase().includes(q));
+
+    // sort: severity(critical first), then by 기준매장 판매량 desc, then 지점 재고 desc
+    rows = rows.slice().sort((a, b) => {
+      const sv = SORTERS.severity(a) - SORTERS.severity(b);
+      if (sv !== 0) return sv;
+      if (b.sSales !== a.sSales) return b.sSales - a.sSales;
+      return b.oStock - a.oStock;
+    });
+
+    if (!rows.length) {
+      content.innerHTML = '<div class="table-wrap"><div class="no-results">조건에 맞는 특이값이 없습니다. 기준을 조정해보세요.</div></div>';
+      return;
+    }
+
+    const bodyHtml = rows.map(r => {
+      const pillLabel = r.status === 'critical' ? '판매없음' : '판매부족';
+      const ratioPct = Math.round(r.ratio * 100);
+      const barCls = r.status === 'critical' ? 'ratio-bar zero' : 'ratio-bar';
+      const barWidth = r.status === 'critical' ? 100 : Math.max(4, ratioPct);
+      return '<tr>' +
+        '<td><span class="pill ' + r.status + '">' + pillLabel + '</span></td>' +
+        '<td><span class="brand-tag">' + esc(r.brand) + '</span></td>' +
+        '<td class="cell-product"><div class="pname">' + esc(r.name) + '</div><div class="pstyle">' + esc(r.style) + ' / ' + esc(r.color) + '</div></td>' +
+        '<td class="num mono">' + r.depr + '%</td>' +
+        '<td class="num mono">' + r.price.toLocaleString() + '</td>' +
+        '<td>' + esc(r.store) + '</td>' +
+        '<td class="num mono">' + r.oStock + '</td>' +
+        '<td class="num mono">' + '<span class="' + barCls + '"><span style="width:' + barWidth + '%"></span></span>' + r.oSales + '</td>' +
+        '<td class="num mono">' + r.sSales + '</td>' +
+        '<td class="num mono">' + (r.whStock === null ? '&ndash;' : r.whStock) + '</td>' +
+        '</tr>';
+    }).join('');
+
+    content.innerHTML =
+      '<div class="table-wrap"><div class="table-scroll"><table>' +
+      '<thead><tr>' +
+        '<th>상태</th><th>브랜드</th><th>상품</th><th class="num">감가율</th><th class="num">판매가</th>' +
+        '<th>대상 지점</th><th class="num">지점 재고</th><th class="num">지점 판매</th>' +
+        '<th class="num">' + esc($storeSelect.value) + ' 판매</th><th class="num">창고 재고</th>' +
+      '</tr></thead>' +
+      '<tbody>' + bodyHtml + '</tbody>' +
+      '</table></div>' +
+      '<div class="foot-note">총 ' + rows.length.toLocaleString() + '건 · 판매없음(빨강)이 우선순위가 가장 높은 이관 후보입니다.</div>' +
+      '</div>';
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // ---------- downloads capability ----------
+  let downloadsApi = null;
+  const exportBtn = document.getElementById('exportBtn');
+  const exportStatus = document.getElementById('exportStatus');
+  (async () => {
+    try {
+      downloadsApi = (typeof claude !== 'undefined') ? await claude.use('downloads') : null;
+    } catch (e) {
+      downloadsApi = null;
+    }
+    exportBtn.style.display = downloadsApi ? '' : 'none';
+  })();
+
+  exportBtn.addEventListener('click', async () => {
+    if (!currentRows.length || !downloadsApi) return;
+    const header = ['상태','브랜드','상품명','스타일','컬러','감가율','판매가','대상지점','지점재고','지점판매','기준매장판매','창고재고'];
+    const lines = [header.join(',')];
+    currentRows.forEach(r => {
+      lines.push([
+        r.status === 'critical' ? '판매없음' : '판매부족', r.brand, r.name, r.style, r.color,
+        r.depr, r.price, r.store, r.oStock, r.oSales, r.sSales, r.whStock === null ? '' : r.whStock
+      ].map(v => '"' + String(v).replace(/"/g, '""') + '"').join(','));
+    });
+    const csv = '﻿' + lines.join('\n');
+    exportStatus.textContent = '';
+    exportBtn.disabled = true;
+    try {
+      await downloadsApi.save({
+        filename: '재고이동후보_' + ($storeSelect.value || '전체') + '.csv',
+        data: csv,
+      });
+      exportStatus.textContent = '저장됨';
+    } catch (err) {
+      const code = err && err.code;
+      if (code === 'declined') exportStatus.textContent = '';
+      else if (code === 'rate_limited') exportStatus.textContent = '잠시 후 다시 시도해주세요';
+      else exportStatus.textContent = '내보내기를 사용할 수 없습니다';
+    } finally {
+      exportBtn.disabled = false;
+      setTimeout(() => { exportStatus.textContent = ''; }, 2500);
+    }
+  });
+
+  // ---------- artifact publish capability ----------
+  let artifactApi = null;
+  const publishBtn = document.getElementById('publishBtn');
+  const publishStatus = document.getElementById('publishStatus');
+  function updatePublishBtnVisibility() {
+    publishBtn.style.display = (artifactApi && state.priceMap) ? '' : 'none';
+  }
+  (async () => {
+    try {
+      artifactApi = (typeof claude !== 'undefined') ? await claude.use('artifact') : null;
+    } catch (e) {
+      artifactApi = null;
+    }
+    updatePublishBtnVisibility();
+  })();
+
+  publishBtn.addEventListener('click', async () => {
+    if (!artifactApi || !state.priceMap) return;
+    publishBtn.disabled = true;
+    publishStatus.textContent = '게시 준비 중...';
+    try {
+      const payload = {
+        publishedAt: new Date().toISOString(),
+        priceMap: Array.from(state.priceMap.entries()),
+        salesByStoreSku: Array.from(state.salesByStoreSku.entries()),
+        storeStockTotal: Array.from(state.storeStockTotal.entries()),
+        whSum: state.whSum ? Array.from(state.whSum.entries()) : null,
+        stockInMap: state.stockInMap ? Array.from(state.stockInMap.entries()) : null,
+        categoryMap: state.categoryMap ? Array.from(state.categoryMap.entries()) : null,
+        fileCounts: Object.fromEntries(Object.keys(state.files).map(r => [r, state.files[r].rows.length])),
+      };
+      const json = JSON.stringify(payload);
+      const res = await fetch(location.href, { cache: 'no-store' });
+      if (!res.ok) throw new Error('template fetch failed: ' + res.status);
+      let html = await res.text();
+      const marker = /(<script type="application\/json" id="embedded-data">)[\s\S]*?(<\/script>)/;
+      if (!marker.test(html)) throw new Error('embedded-data slot not found in template');
+      const escaped = json.replace(/</g, '\\u003c');
+      html = html.replace(marker, '$1' + escaped + '$2');
+      publishStatus.textContent = '게시 중...';
+      await artifactApi.publish(html);
+      publishStatus.textContent = '게시되었습니다. 곧 새로고침됩니다...';
+    } catch (err) {
+      const code = err && err.code;
+      if (code === 'conflict') {
+        publishStatus.textContent = '다른 사용자가 방금 먼저 게시했습니다. 최신 내용으로 곧 새로고침됩니다.';
+      } else if (code === 'not_writer' || code === 'not_granted' || code === 'consent_required' || code === 'not_declared') {
+        publishStatus.textContent = '이 화면에서는 게시 권한이 없습니다.';
+        publishBtn.style.display = 'none';
+      } else if (code === 'too_large') {
+        publishStatus.textContent = '데이터가 너무 커서 게시할 수 없습니다.';
+      } else if (code === 'rate_limited') {
+        publishStatus.textContent = '너무 자주 게시했습니다. 잠시 후 다시 시도해주세요.';
+      } else {
+        console.error('publish failed', err);
+        publishStatus.textContent = '게시에 실패했습니다. 잠시 후 다시 시도해주세요.';
+      }
+    } finally {
+      publishBtn.disabled = false;
+      if (publishBtn.style.display !== 'none') {
+        setTimeout(() => { publishStatus.textContent = ''; }, 4000);
+      }
+    }
+  });
+
+  // ---------- help modal ----------
+  const helpBtn = document.getElementById('helpBtn');
+  const helpBackdrop = document.getElementById('helpBackdrop');
+  const helpClose = document.getElementById('helpClose');
+  function openHelp() { helpBackdrop.hidden = false; }
+  function closeHelp() { helpBackdrop.hidden = true; }
+  helpBtn.addEventListener('click', openHelp);
+  helpClose.addEventListener('click', closeHelp);
+  helpBackdrop.addEventListener('click', (e) => { if (e.target === helpBackdrop) closeHelp(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !helpBackdrop.hidden) closeHelp(); });
+
+  // Runs last: by now every const the render path touches ($storeSelect etc.)
+  // has been declared, so a previously-published page can safely recompute.
+  tryLoadEmbedded();
+})();
+</script>
+
+</body>
+</html>
