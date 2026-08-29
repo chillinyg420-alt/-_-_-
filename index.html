@@ -366,6 +366,8 @@
   }
   .searchbox input:focus { outline: none; }
   .searchbox svg { flex: none; color: var(--text-faint); }
+  .searchbox.compact { min-width: 0; width: 100%; margin-bottom: 8px; box-sizing: border-box; }
+  .searchbox.compact input { width: 100%; }
 
   .stat-row {
     display: grid;
@@ -587,8 +589,12 @@
 
       <div>
         <p class="section-label">2&nbsp;· 브랜드</p>
+        <div class="searchbox compact">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="brandSearchInput" placeholder="브랜드 검색" />
+        </div>
         <div class="chipset" id="brandChips"></div>
-        <p class="hint">아무것도 선택하지 않으면 전체 브랜드가 표시됩니다. 특정 브랜드만 보려면 눌러서 선택하세요.</p>
+        <p class="hint" id="brandChipsHint">아무것도 선택하지 않으면 전체 브랜드가 표시됩니다. 특정 브랜드만 보려면 눌러서 선택하세요.</p>
       </div>
 
       <div id="categorySection" style="display:none;">
@@ -978,11 +984,28 @@
     state.categoryMap = maps.categoryMap || null;
 
     const storeSet = new Set();
-    for (const key of state.salesByStoreSku.keys()) storeSet.add(key.split('|')[0]);
-    for (const key of state.storeStockTotal.keys()) storeSet.add(key.split('|')[0]);
+    const activeSkuKeys = new Set(); // style|color pairs that actually show up in sales or stock, not just the price list
+    for (const key of state.salesByStoreSku.keys()) {
+      const parts = key.split('|');
+      storeSet.add(parts[0]);
+      activeSkuKeys.add(parts.slice(1).join('|'));
+    }
+    for (const key of state.storeStockTotal.keys()) {
+      const parts = key.split('|');
+      storeSet.add(parts[0]);
+      activeSkuKeys.add(parts.slice(1).join('|'));
+    }
     state.stores = Array.from(storeSet).sort((a, b) => a.localeCompare(b, 'ko'));
-    state.brands = Array.from(new Set(Array.from(state.priceMap.values()).map(p => p.brand))).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    // 가격표 전체 브랜드가 아니라, 실제 판매·재고 데이터에 등장하는 브랜드만 후보로 노출
+    // (가격표에는 있지만 이 매장들 어디서도 팔리거나 재고가 없는 브랜드는 골라봐야 결과가 0건이라 제외)
+    const activeBrandSet = new Set();
+    for (const skuKey of activeSkuKeys) {
+      const p = state.priceMap.get(skuKey);
+      if (p && p.brand) activeBrandSet.add(p.brand);
+    }
+    state.brands = Array.from(activeBrandSet).sort((a, b) => a.localeCompare(b));
     if (!state.activeBrands) state.activeBrands = new Set();
+    state.brandSearch = state.brandSearch || '';
 
     state.majors = [];
     state.midsByMajor = {};
@@ -1020,13 +1043,29 @@
   }
 
   function populateBrandChips() {
+    const $brandSearch = document.getElementById('brandSearchInput');
+    if ($brandSearch) $brandSearch.value = state.brandSearch || '';
+    renderBrandChips();
+  }
+
+  // 선택 상태(state.activeBrands)와 검색어에 따른 화면 표시(state.brands 중 일부)는 서로 별개 —
+  // 검색으로 안 보이게 된 브랜드도 선택은 그대로 유지됩니다.
+  function renderBrandChips() {
     const wrap = document.getElementById('brandChips');
-    wrap.innerHTML = state.brands.map(b => {
+    const q = (state.brandSearch || '').trim().toLowerCase();
+    const list = q ? state.brands.filter(b => b.toLowerCase().includes(q)) : state.brands;
+    wrap.innerHTML = list.map(b => {
       const on = state.activeBrands.has(b);
       return '<label class="chip' + (on ? ' on' : '') + '" data-brand="' + b + '">' +
         '<input type="checkbox"' + (on ? ' checked' : '') + ' />' + b +
       '</label>';
     }).join('');
+    const hint = document.getElementById('brandChipsHint');
+    if (hint) {
+      hint.textContent = q
+        ? ('"' + state.brandSearch + '" 검색 결과 ' + list.length + '개 · 선택 없이 두면 전체 브랜드가 표시됩니다.')
+        : '아무것도 선택하지 않으면 전체 브랜드가 표시됩니다. 특정 브랜드만 보려면 눌러서 선택하세요.';
+    }
     wrap.querySelectorAll('.chip').forEach(chip => {
       chip.addEventListener('click', (e) => {
         e.preventDefault();
@@ -1079,6 +1118,7 @@
   const $search = document.getElementById('searchInput');
   const $majorSelect = document.getElementById('majorSelect');
   const $midSelect = document.getElementById('midSelect');
+  const $brandSearch = document.getElementById('brandSearchInput');
 
   function syncLabels() {
     document.getElementById('topNVal').textContent = $topN.value;
@@ -1095,6 +1135,10 @@
     populateMidSelect();
     recompute();
   });
+  $brandSearch.addEventListener('input', () => {
+    state.brandSearch = $brandSearch.value;
+    renderBrandChips();
+  });
   $midSelect.addEventListener('change', () => {
     state.activeMid = $midSelect.value;
     recompute();
@@ -1102,6 +1146,7 @@
   document.getElementById('resetBtn').addEventListener('click', () => {
     $topN.value = DEFAULTS.topN; $ratio.value = DEFAULTS.ratio; $minStock.value = DEFAULTS.minStock; $whCap.value = DEFAULTS.whCap; $deprMax.value = DEFAULTS.deprMax;
     state.activeBrands = new Set();
+    state.brandSearch = '';
     populateBrandChips();
     state.activeMajor = ''; state.activeMid = '';
     populateCategorySelects();
