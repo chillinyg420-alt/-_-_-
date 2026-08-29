@@ -620,6 +620,11 @@
           <input type="range" id="minStock" min="1" max="20" value="1" step="1" />
         </div>
         <div class="field">
+          <label for="whCap">창고재고 상한 <span class="val" id="whCapVal">100족</span></label>
+          <input type="range" id="whCap" min="0" max="500" value="100" step="10" />
+          <p class="hint">창고(중앙 물류)에 이 수량 이상 있으면 창고에서 바로 보충 가능하다고 보고 후보에서 제외합니다 (받을 재고·보낼 재고 모두 동일 적용). 창고재고 데이터가 없으면 적용되지 않습니다.</p>
+        </div>
+        <div class="field">
           <label for="deprMax">감가율 상한 <span class="val" id="deprMaxVal">70%</span></label>
           <input type="range" id="deprMax" min="0" max="100" value="70" step="5" />
         </div>
@@ -670,7 +675,7 @@
       <li><strong>내 매장을 선택하세요.</strong> 왼쪽 "내 매장 선택"에서 본인 매장을 고르면 바로 분석 결과가 나옵니다.</li>
       <li><strong>표를 확인하세요.</strong> <span class="pill critical" style="pointer-events:none;">판매없음</span>·<span class="pill critical" style="pointer-events:none;">체화재고</span>는 가장 먼저 요청·이관해볼 1순위 후보입니다. <span class="pill warning" style="pointer-events:none;">판매부족</span>·<span class="pill warning" style="pointer-events:none;">판매열세</span>는 검토해볼 만한 2순위 후보입니다.</li>
       <li><strong>대상 지점에 연락하세요.</strong> "받을 재고" 모드에서는 "대상 지점"이 재고를 갖고 있어 요청할 곳이고, "보낼 재고" 모드에서는 우리 재고를 보내줄 곳입니다. 그 지점 담당자에게 재고이동을 제안하시면 됩니다.</li>
-      <li><strong>필요하면 조건을 조정하세요.</strong> 왼쪽에서 브랜드, 카테고리(대분류/중분류, 매출분석표 데이터가 있는 경우), 판매·재고 상위 개수, 감가율 상한 등을 바꿔볼 수 있습니다. 안 건드리셔도 기본값으로 바로 쓸 수 있어요.</li>
+      <li><strong>필요하면 조건을 조정하세요.</strong> 왼쪽에서 브랜드, 카테고리(대분류/중분류, 매출분석표 데이터가 있는 경우), 판매·재고 상위 개수, 비교 대상 최소 수량, 창고재고 상한, 감가율 상한 등을 바꿔볼 수 있습니다. 안 건드리셔도 기본값으로 바로 쓸 수 있어요.</li>
       <li><strong>검색·저장.</strong> 오른쪽 위 검색창으로 상품명을 찾거나, "CSV로 내보내기"로 결과를 파일로 저장할 수 있습니다.</li>
     </ol>
     <p class="hint" style="margin-top:14px;">궁금한 점이 있으면 지역장(사용자님)에게 문의해주세요.</p>
@@ -710,7 +715,7 @@
     mode: 'in', // 'in' = 받을 재고(우리 매장으로), 'out' = 보낼 재고(다른 매장으로)
   };
 
-  const DEFAULTS = { topN: 10, ratio: 20, minStock: 1, deprMax: 70 };
+  const DEFAULTS = { topN: 10, ratio: 20, minStock: 1, whCap: 100, deprMax: 70 };
 
   // 모드별로 달라지는 문구 모음 — 로직은 대칭이고 텍스트만 방향에 맞게 바뀝니다.
   const MODE_TEXT = {
@@ -1068,6 +1073,7 @@
   const $topN = document.getElementById('topN');
   const $ratio = document.getElementById('ratio');
   const $minStock = document.getElementById('minStock');
+  const $whCap = document.getElementById('whCap');
   const $deprMax = document.getElementById('deprMax');
   const $storeSelect = document.getElementById('storeSelect');
   const $search = document.getElementById('searchInput');
@@ -1078,9 +1084,10 @@
     document.getElementById('topNVal').textContent = $topN.value;
     document.getElementById('ratioVal').textContent = $ratio.value + '%';
     document.getElementById('minStockVal').textContent = $minStock.value + '족';
+    document.getElementById('whCapVal').textContent = $whCap.value + '족';
     document.getElementById('deprMaxVal').textContent = $deprMax.value + '%';
   }
-  [$topN, $ratio, $minStock, $deprMax].forEach(el => el.addEventListener('input', () => { syncLabels(); recompute(); }));
+  [$topN, $ratio, $minStock, $whCap, $deprMax].forEach(el => el.addEventListener('input', () => { syncLabels(); recompute(); }));
   $storeSelect.addEventListener('change', recompute);
   $search.addEventListener('input', renderTable);
   $majorSelect.addEventListener('change', () => {
@@ -1093,7 +1100,7 @@
     recompute();
   });
   document.getElementById('resetBtn').addEventListener('click', () => {
-    $topN.value = DEFAULTS.topN; $ratio.value = DEFAULTS.ratio; $minStock.value = DEFAULTS.minStock; $deprMax.value = DEFAULTS.deprMax;
+    $topN.value = DEFAULTS.topN; $ratio.value = DEFAULTS.ratio; $minStock.value = DEFAULTS.minStock; $whCap.value = DEFAULTS.whCap; $deprMax.value = DEFAULTS.deprMax;
     state.activeBrands = new Set();
     populateBrandChips();
     state.activeMajor = ''; state.activeMid = '';
@@ -1155,6 +1162,7 @@
     const topN = parseInt($topN.value, 10);
     const ratioMax = parseInt($ratio.value, 10) / 100;
     const minStock = parseInt($minStock.value, 10);
+    const whCap = parseInt($whCap.value, 10);
     const deprMax = parseInt($deprMax.value, 10);
     const yms = referenceYms();
     const mode = state.mode;
@@ -1199,6 +1207,12 @@
         const inInfo = state.stockInMap.get(sku.style + '|' + sku.color);
         if (inInfo && yms.excluded.has(inInfo.yr + '-' + inInfo.mo)) return false; // 직전월+이번달 입고분 제외
       }
+      if (state.whSum) {
+        // 창고(중앙 물류)에 이미 충분히 있으면 지점간 이동 대신 창고에서 바로 보충하면 되므로
+        // 후보에서 제외 — 받을 재고·보낼 재고 모두 동일하게 적용됩니다.
+        const wh = state.whSum.get(sku.style + '|' + sku.color) || 0;
+        if (wh >= whCap) return false;
+      }
       return true;
     });
 
@@ -1241,6 +1255,9 @@
 
     document.getElementById('mainTitle').textContent = store;
     let subText = t.subTextPrefix + topN + '개 SKU 기준 · 감가율 ' + deprMax + '% 이하 · ' + t.ratioLabel + ' ' + $ratio.value + '% 기준';
+    if (state.whSum) {
+      subText += ' · 창고재고 ' + whCap + '족 미만';
+    }
     if (state.stockInMap) {
       subText += ' · 입고 ' + yms.prev + '·' + yms.current + ' 제외';
     }
