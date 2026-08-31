@@ -172,7 +172,7 @@
           <ul style="margin:6px 0 0; padding-left:18px;">
             <li><b>점재고</b> — "스타일별 입출고실적조회" 화면에서 점/창고구분을 <b>점</b>으로, 우리 매장으로 선택 후 다운로드</li>
             <li><b>물류재고</b> — 같은 화면에서 점/창고구분을 <b>창고</b>로 선택 후 다운로드</li>
-            <li><b>온라인판매</b> — "판매원 실적분석(일) 또는 (월)" 화면에서 사번 <b>900000</b> 입력 후 조회 → 기간 지정 후 다운로드</li>
+            <li><b>온라인판매</b> — "판매원 실적조회(일) 또는 (월)" 화면에서 사번 <b>900000</b> 입력 후 조회 → 기간 지정 후 다운로드 (일별·월별 둘 다 가능)</li>
           </ul>
         </div>
         <div>
@@ -577,7 +577,11 @@ function buildAnalysis(threshold, whMinPull, storeMinExclude){
       // 그 외(매장재고 없음 + 창고재고도 whMinPull 미만)는 당길 수 없는 물량이므로 표시하지 않는다.
     }
   }
-  results.sort((a,b) => a.rank - b.rank);
+  results.sort((a,b) => {
+    const gradeOrder = {즉시등록:0, 창고당김:1};
+    if (gradeOrder[a.grade] !== gradeOrder[b.grade]) return gradeOrder[a.grade] - gradeOrder[b.grade];
+    return a.rank - b.rank;
+  });
   return {results, totalStyles, cutoffRank};
 }
 
